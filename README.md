@@ -36,3 +36,6 @@ aliases:
     name: smtp-notify
     url: ""
 ```
+
+# Inspiracja i zapożyczenia:
+https://github.com/dguerri/LibVirtKvm-scripts/blob/master/fi-backup.sh
