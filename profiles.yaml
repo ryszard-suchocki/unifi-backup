@@ -1,0 +1,72 @@
+{{ define "env_minio_cred" }}
+    - AWS_ACCESS_KEY_ID: user
+    - AWS_SECRET_ACCESS_KEY: key
+{{ end }}
+{{ $minio_repo := "s3:http://127.0.0.1:9000/bucket" }}
+
+global:
+    restic-binary: {{ .ConfigDir }}/restic
+    default-command: snapshots
+    initialize: true
+    priority: low
+
+groups:
+    full-backup:
+    - VM1-Full
+    diff-backup:
+    - VM1-Diff
+
+default:
+    env:
+        tmp: /tmp
+
+template-KVM:
+    env:
+{{ template "env_minio_cred" . }}
+    retention:
+        after-backup: true
+        before-backup: false
+        compact: true
+        host: true
+        keep-daily: 14
+        keep-hourly: 1
+        keep-last: 3
+        keep-monthly: 4
+        keep-tag:
+        - forever
+        keep-weekly: 12
+        keep-within: 1h
+        keep-yearly: 1
+        prune: true
+        tag:
+        - kvm
+
+VM1:
+    inherit: template-KVM
+    repository: "{{ $minio_repo }}/VM1/"
+    password-file: keys.d/VM1.key
+    env:
+    - BACKUPLEVEL: incr
+    backup:
+      run-before: "{{ .ConfigDir }}/unifi-backup.sh -a backup -m $BACKUPLEVEL VM1"
+      one-file-system: true
+      source: /storage/kvm/instances/VM1
+      schedule:
+      - "Mon..Fri 8,10,12,14,16,18,20:00"
+      tag:
+      - kvm
+      - VM1 #change me
+VM1-Diff:
+    inherit: VM1
+    env:
+    - BACKUPLEVEL: diff
+    backup:
+       schedule:
+       - "Mon..Fri 21:00"
+VM1-Full:
+    inherit: VM1
+    env:
+    - BACKUPLEVEL: full
+    backup:
+       schedule:
+       - "Sat 20:00"

@@ -1,0 +1,7 @@
+aliases:
+  telegram:
+    name: telegram-notify
+    url: ""
+  smtp:
+    name: smtp-notify
+    url: ""
