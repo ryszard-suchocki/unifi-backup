@@ -39,7 +39,7 @@ aliases:
 
 # Generator
 
-Skrypt, który ma za zadanie ułatwić tworzenie profili. Nie wykorzustuje dziedziczenia, przez co jest "samowystarczalny". Należy poprawić / dodać zmienne, a następnie wywołać skrypt z argumentami. 
+Skrypt, który ma za zadanie ułatwić tworzenie profili. Nie wykorzustuje dziedziczenia, przez co jest "samowystarczalny". Należy poprawić / dodać zmienne, a następnie wywołać skrypt z argumentami. Zakłada jedynie dziedziczenie po utworzonym profilu "incr".
 
 ```
 $ ./unifi-generator.sh --help
