@@ -1,7 +1,7 @@
 aliases:
   telegram:
     name: telegram-notify
-    url: ""
+    url: "telegram://GENERATE_SHOUTRRR_URL"
   smtp:
     name: smtp-notify
-    url: ""
+    url: "smtp://GENERATE_SHOUTRRR_URL"
