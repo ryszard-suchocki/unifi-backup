@@ -65,6 +65,14 @@ Przykład:
 ```
 ./unifi-generator.sh -i "Mon..Fri 8,12,16,20:00" -d "Mon..Fri 21:00" -f "Sat 20:00" MY-VM-NAME
 ```
+# Bloby
+
+Restic - restic is a backup program that is fast, efficient and secure - https://github.com/restic/restic [BSD 2]
+Resticprofile - resticprofile is the missing link between a configuration file and restic backup - https://github.com/creativeprojects/resticprofile [GPL 3]
+Dasel - Dasel (short for data-selector) allows you to query and modify data structures using selector strings - https://github.com/TomWright/dasel [MIT]
+Shoutrrr- Notification library for gophers and their furry friends - https://github.com/containrrr/shoutrrr [MIT]
+Systemd-timers - Better systemctl list-timers - https://github.com/dtan4/systemd-timers [MIT]
+
 
 # Inspiracja i zapożyczenia:
 https://github.com/dguerri/LibVirtKvm-scripts/blob/master/fi-backup.sh
