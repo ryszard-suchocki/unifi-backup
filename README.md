@@ -37,5 +37,34 @@ aliases:
     url: ""
 ```
 
+# Generator
+
+Skrypt, który ma za zadanie ułatwić tworzenie profili. Nie wykorzustuje dziedziczenia, przez co jest "samowystarczalny". Należy poprawić / dodać zmienne, a następnie wywołać skrypt z argumentami. 
+
+```
+$ ./unifi-generator.sh --help
+  
+   unifi-generator.sh version 1.0.0 - Ryszard Suchocki
+
+   Usage:
+
+   ./unifi-generator.sh [[-i <schedule>] [-d <schedule>] [-f <schedule>]] [-V] domain
+
+   Options:
+      -i|--incr <schedule>     Incremental type backup schedule
+      -d|--diff <schedule>     Diffrential type backup schedule
+      -f|--full <schedule>     Full type backup schedule
+      -V                       Print version and exit
+
+   Version Requirements:
+      dasel	X.X (https://github.com/TomWright/dasel)
+
+```
+Przykład:
+
+```
+./unifi-generator.sh -i "Mon..Fri 8,12,16,20:00" -d "Mon..Fri 21:00" -f "Sat 20:00" MY-VM-NAME
+```
+
 # Inspiracja i zapożyczenia:
 https://github.com/dguerri/LibVirtKvm-scripts/blob/master/fi-backup.sh
