@@ -1,30 +1,31 @@
 #!/bin/bash
 
 VERSION="1.0.2"
-APP_NAME="unifi-backup"
+APP_NAME="turbobackup"
 
-# realizacja scenariusza:
-# przygotowanie do backup - pełny (zawsze commit do bazy), różnicowy (baza + jedna zależna), przyrostowa (od ostatniej pełnej lub różnicowej)
-# dwa tryby kopii - archiwum (kompresja, dedup) i rsync (czysta kopia, gotowa do rozruchu). Zawsze zrzut konfiguracji VM.
-# przewidzenie kolizji nazwowej dysku przy trybie rsync
+# Realizacja scenariusza:
+# przygotowanie do backup - pełny (full, zawsze commit do bazy/podstawy), różnicowy (diff, baza + jedna zależna. Pośrednie "incr" spłaszczone do "diff"(blockpull)), przyrostowa (od ostatniej pełnej,różnicowej lub poprzedniej typu "incr")
+# dwa tryby kopii - archiwum (kompresja, dedup) i rsync (czysta kopia, gotowa do rozruchu). Zawsze zrzut konfiguracji VM (konfiguracja do incr,diff lub full - nie zwiera ostatniego incr)
+# przewidzenie kolizji nazwowej dysku przy trybie rsync (vmdisk.qcow2 w /folder/A/ i /folder/B/ - dla VM to różne dyski, dla rsync do /folder/C/ nastąpi kolizja).
+# --------- problematyczne zrzucenie konfiguracji docelowej. Po przekopiowaniu do jednego folderu, który nie jest docelowy, zrzut wydaje się bezcelowy (trzeba by zmodyfikować cały łańcuch aka "rebase")
 #
-# domena bez jakiejkowiek kopii z
-# domena z conajmniej jedną kopią
-# domena w ruchu
-# domena zatrzymana (bez kopii i z kopią)
-
+# domena bez jakiejkowiek kopii
+# domena z conajmniej jedną kopią / wykorzystany external snapshot
+# domena w ruchu / obsługa virsh
+# domena zatrzymana bez kopii/ obsługa przez qemu-img i virt-xml
+# domena zatrzymana z kopią / obsługa przez qemu-img i virt-xml
+#
 # virsh - sprawdzić czy domena istnieje / jest zdefiniowana
 # virsh - okreslic aktualnie wykorzystywane dyski (dziala dla offline i online)
 # qemu-img - okreslic zaleznosci aka backing files
 # utworzyć funkcje generyczną do snapshotu:
-#  - dla offline dla każdego dysku oddzielnie (zapewnic, by VM sie nie uruchomiła)(image exchange)
+#  - dla offline dla każdego dysku oddzielnie (zapewnic, by VM sie nie uruchomiła)(image exchange / virt-xml)
 #  - dla online virsh create-snapshot-as
+#
 # Utworzyc funkcje generyczna do commitu:
-#  - flatten - roznicowa
-#  - consolidation - przygotowanie do pelnego backupu
-#  - kasowanie nieużywanych dysków w starym łańcuchu.
-
-# tbak.sh --domains X,Y,Z --mode backup,sync,maintenance --action full,incr,diff,enter,save,drop --verbosity debug,info,error --excluded-vhd xda,xdb,xdc
+#  - flatten - roznicowa (diff)
+#  - consolidation - pełna (full)
+#  - kasowanie nieużywanych dysków w starym łańcuchu. Oczyszczenie folderów z plików nie wykorzystywanych w działającej VM.
 
 QEMU_IMG="/usr/bin/qemu-img"
 VIRSH="/usr/bin/virsh"
@@ -57,7 +58,7 @@ function print_usage() {
    Options:
       -a <action>
       -m <method>       Specified action mode/method: backup:[full|diff|incr|enable|disable|showchain] sync:[inplace|full|diff] maintenance:[enter|save|drop]
-      -b <directory>    Copy previous snapshot/base image to the specified <directory>
+      -b <directory>    Copy previous snapshot/base image to the specified <directory> # not yet implemented
       -q                Use quiescence (qemu agent must be installed in the domain)
       -s <directory>    Dump domain status in the specified directory
       -d                Debug
@@ -147,8 +148,14 @@ function dump_config() {
     local dump_path="$(dirname $(virsh domblklist ${domain_name} --details | grep disk | head -n1 | awk '{print $4}'))"
     local command="virsh dumpxml ${domain_name}"
     print_v d $command
-    local command_output=$($command > ${dump_path}/${domain_name}.xml)
-    print_v d $command_output
+    local command_output1=$($command > ${dump_path}/${domain_name}.xml)
+    local command_output2=$($command --inactive > ${dump_path}/${domain_name}-inactive.xml)
+    local command_output3=$($command --migratable > ${dump_path}/${domain_name}-migratable.xml)
+    
+    print_v d $command_output1
+    print_v d $command_output2
+    print_v d $command_output3
+    
     if [ ! -z $print_path ]; then
         echo "${dump_path}/${domain_name}.xml"
     fi
@@ -515,7 +522,7 @@ function flatten_consolidate(){
                     command_output=$($command 2>&1)
                     if [ $? -eq 0 ]; then
                         print_v d "${command_output}"
-                        command="virt-xml $domain_name --edit target=$target_dev --disk driver_type=qcow2,path=$base_image"
+                        command="virt-xml $domain_name --edit target=$target_dev --disk driver_type=qcow2,path=$base_image --define"
                         print_v d $command
                         command_output=$($command 2>&1)
                         if [ $? -eq 0 ]; then
@@ -564,13 +571,19 @@ while true; do
             shift; shift
         ;;
         -a|--action)
+            declare -a ACTIONLIST=()
+            ACTIONLIST=("backup" "sync" "maintenance")
             ACTION=$2
+            if ! [[ " ${ACTIONLIST[*]} " =~ " ${ACTION} " ]]; then
+                print_usage "-a requires specifying 'backup', 'sync' or 'maintenance' "
+                exit 1
+            fi
             declare -a MODELIST=()
             if [ "$ACTION" == "backup" ]; then
                 MODELIST=("full" "incr" "diff" "enable" "disable" "showchain")
-                elif [ "$ACTION" == "sync" ]; then
+            elif [ "$ACTION" == "sync" ]; then
                 MODELIST=("inplace" "full" "incr")
-                elif [ "$ACTION" == "maintenance" ]; then
+            elif [ "$ACTION" == "maintenance" ]; then
                 MODELIST=("enter" "save" "drop")
             else
                 print_usage "-a requires specifying 'backup', 'sync' or 'maintenance' "
