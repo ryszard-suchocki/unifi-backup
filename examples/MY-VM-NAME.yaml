@@ -1,0 +1,93 @@
+MY-VM-NAME-diff:
+  backup:
+    schedule: Mon..Fri 21:00
+    tag:
+    - MY-VM-NAME
+    - kvm
+    - diff
+  env:
+  - backup_level: diff
+  - domain: MY-VM-NAME
+  inherit: MY-VM-NAME-incr
+  retention:
+    tag:
+    - MY-VM-NAME
+    - kvm
+    - diff
+MY-VM-NAME-full:
+  backup:
+    schedule: Sat 20:00
+    tag:
+    - MY-VM-NAME
+    - kvm
+    - full
+  env:
+  - backup_level: full
+  - domain: MY-VM-NAME
+  inherit: MY-VM-NAME-diff
+  retention:
+    tag:
+    - MY-VM-NAME
+    - kvm
+    - full
+MY-VM-NAME-incr:
+  backup:
+    run-before: '{{ .ConfigDir }}/unifi-backup.sh -a backup -m $BACKUP_LEVEL $DOMAIN'
+    schedule: Mon..Fri 8,12,16,20:00
+    source:
+    - /storage/kvm/instances/MY-VM-NAME
+    tag:
+    - MY-VM-NAME
+    - kvm
+    - incr
+  env:
+  - backup_level: incr
+  - domain: MY-VM-NAME
+  initialize: true
+  lock: '{{ .ConfigDir }}/MY-VM-NAME.lock'
+  password-file: ./keys.d/MY-VM-NAME.key
+  repository: sftp://user@server:22/Backup/Restic/MY-VM-NAME
+  retention:
+    after-backup: true
+    before-backup: false
+    compact: true
+    host: false
+    keep-daily: 14
+    keep-hourly: 1
+    keep-last: 3
+    keep-monthly: 6
+    keep-weekly: 12
+    keep-yearly: 1
+    path: true
+    prune: true
+    tag:
+    - MY-VM-NAME
+    - kvm
+    - incr
+  run-after:
+  - "./notify send --config notify.yaml --alias telegram --title \"\U0001F7E2 SUCCESS
+    | \\\"$DOMAIN (vm) @ $(hostname)\\\" - Restic - Profile \\\"$PROFILE_NAME\\\"
+    command \\\"$PROFILE_COMMAND\\\" - SUCCESS\" --msg \"Plugin: KVM, source: $DOMAIN;
+    profile \\\"$PROFILE_NAME\\\" command \\\"$PROFILE_COMMAND\\\" finished OK\""
+  run-after-fail:
+  - "./notify send --config notify.yaml --alias telegram --title \"\U0001F534 FAIL
+    | \\\"$DOMAIN (vm) @ $(hostname)\\\" - Restic - Profile \\\"$PROFILE_NAME\\\"
+    command \\\"$PROFILE_COMMAND\\\" - FAILED\" --msg \"Plugin: KVM, source: $DOMAIN;
+    Profile \\\"$PROFILE_NAME\\\" command \\\"$PROFILE_COMMAND\\\" finished NG. Details
+    about error: \\\"$ERROR_STDERR\\\"\""
+default:
+  backup:
+    schedule-log: '{{ .ConfigDir }}/logs/{{ .Profile.Name }}.log'
+  env:
+  - tmp: /tmp
+global:
+  default-command: snapshots
+  initialize: false
+  restic-binary: '{{ .ConfigDir }}/restic'
+  restic-lock-retry-after: 15m
+  restic-stale-lock-age: 2h
+  scheduler: systemd
+groups:
+  diff: MY-VM-NAME-diff
+  full: MY-VM-NAME-full
+  incr: MY-VM-NAME-incr
