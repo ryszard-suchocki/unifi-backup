@@ -238,19 +238,26 @@ function get_backing_file() {
     local -n _return_var=$2
     local _ret=
     local _backing_file=
+    local _qemu_info=
     local version=
     
-    #version=$(qemu_version)
-    _backing_file=$($QEMU_IMG info $QEMU_IMG_SHARE_FLAG "$file_name" | \
-    awk '/^backing file: / {$1=$2=""; print $0}'|sed 's/^[ \t]*//')
+    # version=$(qemu_version)
+    
+    #
+    # grep returns 1 if no matching string found - means error or last file in chain...
+    #
+    
+    _qemu_info=$($QEMU_IMG info $QEMU_IMG_SHARE_FLAG "$file_name")
     _ret=$?
-    if [[ $_ret == 1 ]]; then
+    
+    if [[ $_ret -gt 0 ]]; then
         print_v e "Error in getting backing file: Check if running with sufficient permissions (sudo, apparmor status, etc)"
+        return $_ret
+    else
+        _backing_file=$(echo "$_qemu_info" | awk '/^backing file:/ {$1=$2=""; print $0}' | grep -oE "(\/[-Aa-Zz/0-9\.]*)")
     fi
-    
     _return_var="$_backing_file"
-    
-    return $_ret
+    return 0
 }
 
 function get_snapshot_chain() {
@@ -348,9 +355,23 @@ function snapshot_domain() {
             _ret=$?
             if [ $_ret -eq 0 ]; then
                 print_v d "${command_output}"
-                command="virt-xml $domain_name --edit target=$target_dev --disk driver_type=qcow2,path=$snap_image"
+                
+                command="virt-xml $domain_name --remove-device --disk target=${target_dev} --define"
                 print_v d $command
                 command_output=$($command 2>&1)
+                _ret=$?
+                if [ $_ret -eq 0 ]; then
+                    print_v d "Target device '$target_dev' dismounted"
+                    print_v d "${command_output}"
+                else
+                    print_v e "Target device '$target_dev' couldn't be dismounted"
+                    print_v e "${command_output}"
+                fi
+                
+                command="virt-xml $domain_name --add-device --disk target=${target_dev},driver_type=qcow2,path=${snap_image} --define"
+                print_v d $command
+                command_output=$($command 2>&1)
+                
                 _ret=$?
                 if [ $_ret -eq 0 ]; then
                     print_v d "Snapshot image '$snap_image' mounted as target device '$target_dev'"
@@ -522,7 +543,21 @@ function flatten_consolidate(){
                     command_output=$($command 2>&1)
                     if [ $? -eq 0 ]; then
                         print_v d "${command_output}"
-                        command="virt-xml $domain_name --edit target=$target_dev --disk driver_type=qcow2,path=$base_image --define"
+                        
+                        command="virt-xml $domain_name --remove-device --disk target=${target_dev} --define"
+                        print_v d $command
+                        command_output=$($command 2>&1)
+                        
+                        _ret=$?
+                        if [ $_ret -eq 0 ]; then
+                            print_v d "Target device '$target_dev' dismounted"
+                            print_v d "${command_output}"
+                        else
+                            print_v e "Target device '$target_dev' couldn't be dismounted"
+                            print_v e "${command_output}"
+                        fi
+                                                
+                        command="virt-xml $domain_name --add-device --disk target=${target_dev},driver_type=qcow2,path=${base_image} --define"
                         print_v d $command
                         command_output=$($command 2>&1)
                         if [ $? -eq 0 ]; then
@@ -581,9 +616,9 @@ while true; do
             declare -a MODELIST=()
             if [ "$ACTION" == "backup" ]; then
                 MODELIST=("full" "incr" "diff" "enable" "disable" "showchain")
-            elif [ "$ACTION" == "sync" ]; then
+                elif [ "$ACTION" == "sync" ]; then
                 MODELIST=("inplace" "full" "incr")
-            elif [ "$ACTION" == "maintenance" ]; then
+                elif [ "$ACTION" == "maintenance" ]; then
                 MODELIST=("enter" "save" "drop")
             else
                 print_usage "-a requires specifying 'backup', 'sync' or 'maintenance' "
