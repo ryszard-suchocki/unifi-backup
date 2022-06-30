@@ -254,7 +254,7 @@ function get_backing_file() {
         print_v e "Error in getting backing file: Check if running with sufficient permissions (sudo, apparmor status, etc)"
         return $_ret
     else
-        _backing_file=$(echo "$_qemu_info" | awk '/^backing file:/ {$1=$2=""; print $0}' | grep -oE "(\/[-Aa-Zz/0-9\.]*)")
+        _backing_file=$(echo "$_qemu_info" | awk '/^backing file:/ {$1=$2=""; print $0}' | grep -oE "(\/[Aa-Zz/0-9\._-]*)")
     fi
     _return_var="$_backing_file"
     return 0
@@ -292,15 +292,30 @@ function commit_offline_domain(){
     local domain_name=$1
     local base_image=$2
     local snap_image=$3
+
+    # nie ma opcji commitowania całego łańcucha. Obejscie - blockpull różnic, następnie commit. Qemu-img commit wysyla dane do bezposredniego backing chain.
     
-    local command="qemu-img commit $snap_image"
+    local command="rebase_offline_domain $domain_name $base_image $snap_image"
     print_v d $command
-    command_output=$(${command} 2>&1)
-    if [ $? -eq 0 ]; then
-        return 0
+    command_output=$($command 2>&1)
+    _ret=$?
+    print_v d $command_output
+    
+    if [ $_ret -eq 0 ]; then
+        local command="qemu-img commit $snap_image"
+        print_v d $command
+        command_output=$(${command} 2>&1)
+        _ret=$?
+        if [ $_ret -eq 0 ]; then
+            return 0
+        else
+            return 1
+        fi
     else
         return 1
     fi
+    
+    
 }
 
 function rebase_offline_domain(){
@@ -463,7 +478,7 @@ function purge_backing_files(){
     local -n old_backing_files=$1
     local -n new_backing_files=$2
     local files_to_remove=(`echo ${old_backing_files[@]} ${new_backing_files[@]} | tr ' ' '\n' | sort | uniq -u`)
-    #print_v d "Files to remove: ${files_to_remove}"
+    print_v d "Files to remove: ${files_to_remove}"
     print_v d "Files to remove: ${#files_to_remove[@]}"
     for ((k=0 ; k<"${#files_to_remove[@]}";k++)); do
         local command="rm  ${files_to_remove[$k]}"
@@ -495,7 +510,7 @@ function flatten_consolidate(){
             snapshot_chain[$i,$j]="${snapshot_chain_flat[$j]}"
             print_v d "${snapshot_chain[$i,$j]}"
         done
-        if [ ! -z $request_action ] && [ $request_action == "flatten" ]; then
+        if [ ! -z $request_action ] && [ $request_action == "flatten" ]; then # FLATTEN - Block pull to top most file
             if [ "${#snapshot_chain_flat[@]}" -gt 2 ]; then
                 print_v d ""
                 print_v d "Flattening possible - ${block_devices[$i]} to ${snapshot_chain_flat[(${#snapshot_chain_flat[@]}-2)]}"
@@ -522,7 +537,7 @@ function flatten_consolidate(){
             fi
         fi
         
-        if [ ! -z $request_action ] && [ $request_action == "consolidate" ]; then
+        if [ ! -z $request_action ] && [ $request_action == "consolidate" ]; then # CONSOLIDATION - "block commit" to base image. Caution - base image must be writtable.
             if [ "${#snapshot_chain_flat[@]}" -gt 1 ]; then
                 print_v d ""
                 print_v d "Consolidation possible. ${block_devices[$i]} to ${snapshot_chain_flat[(${#snapshot_chain_flat[@]}-1)]}"
@@ -556,7 +571,7 @@ function flatten_consolidate(){
                             print_v e "Target device '$target_dev' couldn't be dismounted"
                             print_v e "${command_output}"
                         fi
-                                                
+                        
                         command="virt-xml $domain_name --add-device --disk target=${target_dev},driver_type=qcow2,path=${base_image} --define"
                         print_v d $command
                         command_output=$($command 2>&1)
