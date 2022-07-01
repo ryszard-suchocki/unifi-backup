@@ -1,8 +1,8 @@
 #!/bin/bash
 
-VERSION="1.0.2"
+VERSION="1.0.4"
 APP_NAME="unifi-backup.sh"
-SCRIPT_URL='http://localhost/unifi-backup.sh'
+SCRIPT_URL='https://raw.githubusercontent.com/ryszard-suchocki/unifi-backup/main/unifi-backup.sh'
 SCRIPT_DESCRIPTION=""
 SCRIPT_LOCATION="${BASH_SOURCE[@]}"
 
