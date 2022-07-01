@@ -1,7 +1,10 @@
 #!/bin/bash
 
-VERSION="1.0.3"
-APP_NAME="turbobackup"
+VERSION="1.0.4"
+APP_NAME="unifi-backup.sh"
+SCRIPT_URL='https://raw.githubusercontent.com/ryszard-suchocki/unifi-backup/main/unifi-backup.sh'
+SCRIPT_DESCRIPTION=""
+SCRIPT_LOCATION="${BASH_SOURCE[@]}"
 
 # Realizacja scenariusza:
 # przygotowanie do backup - pełny (full, zawsze commit do bazy/podstawy), różnicowy (diff, baza + jedna zależna. Pośrednie "incr" spłaszczone do "diff"(blockpull)), przyrostowa (od ostatniej pełnej,różnicowej lub poprzedniej typu "incr")
@@ -44,6 +47,34 @@ PRINT_FILES=0
 
 _ret=0 # return variable
 
+function update()
+{
+    TMP_FILE=$(mktemp -p "" "XXXXX.sh")
+    curl -s -L "$SCRIPT_URL" > "$TMP_FILE"
+    NEW_VER=$(grep "^VERSION" "$TMP_FILE" | awk -F'[="]' '{print $3}')
+    ABS_SCRIPT_PATH=$(readlink -f "$SCRIPT_LOCATION")
+    if [ "$VERSION" \< "$NEW_VER" ]
+    then
+        printf "Updating script \e[31;1m%s\e[0m -> \e[32;1m%s\e[0m\n" "$VERSION" "$NEW_VER"
+
+        echo "cp \"$TMP_FILE\" \"$ABS_SCRIPT_PATH\"" > ./updater.sh
+        echo "rm -f \"$TMP_FILE\"" >> updater.sh
+        echo "echo Running script again: `basename ${BASH_SOURCE[@]}` $@" >> ./updater.sh
+        echo "exec \"$ABS_SCRIPT_PATH\" \"$@\"" >> ./updater.sh
+
+        chmod +x ./updater.sh
+        chmod +x "$TMP_FILE"
+        exec ./updater.sh
+    else
+        echo "Unifi-backup script: $VERSION (latest)." 
+        rm -f "$TMP_FILE"
+    fi
+    rm -f updater.sh
+}
+
+update "$@"
+
+echo "$@"
 
 function print_usage() {
     [ -n "$1" ] && (echo "" ; print_v e "$1\n")
