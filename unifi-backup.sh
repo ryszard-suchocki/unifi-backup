@@ -2,7 +2,7 @@
 
 VERSION="1.0.4"
 APP_NAME="unifi-backup.sh"
-SCRIPT_URL='https://raw.githubusercontent.com/ryszard-suchocki/unifi-backup/main/unifi-backup.sh'
+SCRIPT_URL='http://localhost/unifi-backup.sh'
 SCRIPT_DESCRIPTION=""
 SCRIPT_LOCATION="${BASH_SOURCE[@]}"
 
@@ -60,7 +60,7 @@ function update()
         echo "cp \"$TMP_FILE\" \"$ABS_SCRIPT_PATH\"" > ./updater.sh
         echo "rm -f \"$TMP_FILE\"" >> updater.sh
         echo "echo Running script again: `basename ${BASH_SOURCE[@]}` $@" >> ./updater.sh
-        echo "exec \"$ABS_SCRIPT_PATH\" \"$@\"" >> ./updater.sh
+        echo "exec \"$ABS_SCRIPT_PATH\" $@" >> ./updater.sh
 
         chmod +x ./updater.sh
         chmod +x "$TMP_FILE"
@@ -69,7 +69,7 @@ function update()
         echo "Unifi-backup script: $VERSION (latest)." 
         rm -f "$TMP_FILE"
     fi
-    rm -f updater.sh
+    #rm -f updater.sh
 }
 
 update "$@"
