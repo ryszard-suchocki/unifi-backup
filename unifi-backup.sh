@@ -60,21 +60,19 @@ function update()
         echo "cp \"$TMP_FILE\" \"$ABS_SCRIPT_PATH\"" > ./updater.sh
         echo "rm -f \"$TMP_FILE\"" >> updater.sh
         echo "echo Running script again: `basename ${BASH_SOURCE[@]}` $@" >> ./updater.sh
-        echo "exec \"$ABS_SCRIPT_PATH\" $@" >> ./updater.sh
+        echo "exec \"$ABS_SCRIPT_PATH\" \"$@\"" >> ./updater.sh
 
         chmod +x ./updater.sh
         chmod +x "$TMP_FILE"
         exec ./updater.sh
     else
-        echo "unifi-backup.sh script: $VERSION (latest)" 
+        echo "Unifi-backup script: $VERSION (latest)" 
         rm -f "$TMP_FILE"
     fi
     #rm -f updater.sh
 }
 
 update "$@"
-
-echo "$@"
 
 function print_usage() {
     [ -n "$1" ] && (echo "" ; print_v e "$1\n")
