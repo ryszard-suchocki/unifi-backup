@@ -66,7 +66,7 @@ function update()
         chmod +x "$TMP_FILE"
         exec ./updater.sh
     else
-        echo "Unifi-backup script: $VERSION (latest)." 
+        echo "unifi-backup.sh script: $VERSION (latest)" 
         rm -f "$TMP_FILE"
     fi
     #rm -f updater.sh
