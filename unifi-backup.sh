@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION="1.0.4"
+VERSION="1.0.2"
 APP_NAME="unifi-backup.sh"
 SCRIPT_URL='http://localhost/unifi-backup.sh'
 SCRIPT_DESCRIPTION=""
@@ -66,7 +66,7 @@ function update()
         chmod +x "$TMP_FILE"
         exec ./updater.sh
     else
-        echo "Unifi-backup script: $VERSION (latest)." 
+        echo "Unifi-backup script: $VERSION (latest)" 
         rm -f "$TMP_FILE"
     fi
     rm -f updater.sh
