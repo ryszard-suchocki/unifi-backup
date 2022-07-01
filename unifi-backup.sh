@@ -74,7 +74,7 @@ function update()
 
 update "$@"
 
-echo "$@"
+#echo "$@"
 
 function print_usage() {
     [ -n "$1" ] && (echo "" ; print_v e "$1\n")
