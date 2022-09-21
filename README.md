@@ -1,23 +1,20 @@
 # unifi-backup.sh
 
 ## Introduction
-Unifi-backup.sh is a helper script that manages or conducts the process of backing up KVM Virtual Machines at an early stage. It is a kind of KVM Backup software that requires external tools to properly secure data as it does not backup files itself (by itself). `Unifi-backup.sh` only prepares VM files to backup. It uses something called "external snapshots", the snapshot method that can produce a VM disk image chain (base image with linked images (topmost image)) or produce a standalone image of each disk. You can read more about external snapshots and image chains in QEMU/Libvirt docs freely available on the internet. When the helper script finishes its task, you can back up the VM folder using any tool you prefer. In my case, I use Restic and Resticprofile. `Unifi-backup.sh` allow to the creation of full, diff, and incr types of backup. 
+Unifi-backup.sh is a helper script that manages or conducts the process of backing up KVM Virtual Machines at an early stage. It is a kind of KVM Backup software that requires external tools to properly secure data as it does not backup files itself (by itself). `Unifi-backup.sh` only prepares VM files to backup. It uses something called "external snapshots", the snapshot method that can produce a VM disk image chain (base image with linked images (topmost image)) or produce a standalone image of each disk. You can read more about external snapshots and image chains in QEMU/Libvirt docs freely available on the internet. When the helper script finishes its task, you can back up the VM folder using any tool you prefer. In my case, I use Restic and Resticprofile. `Unifi-backup.sh` can create full, diff or incr types of backup (you can choose to create full or diff + full etc.). 
 
 #### Short example
 
 Main folder of VM is located at /storage/kvm/instances/MYVM/ # Here we have disk.1.qcow2, disk.2.qcow2, MYVM.xml (definition) etc.
 
-When you want to back up VM using borg, restic, and kopia.io you should shut down your VM to provide consistency in data read-out, because in other cases VM disks are in constant write. Borg, Restic, kopia.io, and other programs are not able to track changes (what was written since the start of the backup). Writes on disks can occur in random places, so your image data is changing constantly. This can result in a broken disk image (making it unusable, if you create it in a dead simple, stupid way).
+When you want to back up VM using borg, restic, and kopia.io you should shut down your VM to provide consistency in data read-out, otherwise VM disks are in constant write state, so content changes over time and backup can take some time. Borg, Restic, kopia.io, and other programs are not able to track such changes (what was written since the start of the backup). Writes on disks can occur in random places, so your image data is changing constantly. This can result in a broken disk image (making it unusable, if you create it in a dead simple, stupid way).
 
-The recipe for this is an external snapshot that will produce an R/W image (topmost) and a R/O image (base). 
+The recipe for this is an external snapshot that will produce an R/W image (topmost) and a R/O image (base). Such state is called "crash consistent".
+Most filesystems are able to recover themselves from the "crash" state. R/W and R/O images allow us to read most of the data in the correct way (only R/O images should be read). 
 
 > !!! note 
 > There is an additional mechanism that can provide filesystem quiesce  - Qemu Agent, that can call fs freeze and thaw to sync in memory pending writes > and provide crash consistent filesystem.
 > !!!
-
-Most filesystems are able to recover themselves from the "crash" state. 
-
-R/W and R/O images allow us to read most of the data in the correct way (only R/O images should be read). 
 
 The process looks like this:
  
@@ -33,7 +30,7 @@ If you restore all files from a recent backup, you will also have disk.1.incr-YM
 
 What is most crucial borg, restic, and kopia.io knows what was backed up recently (based on timestamps), and there will be no need to read once again all R/O images - only a recent R/O image will be read out. So if you create quite often "incr" backup, only a small part needs to be read. 
 
-When there is a lot of incr images (data traversal is taking a lot) you can consolidate "incr"s to "diff". Script will create a new file, pull data from all incr to itself (it knows the correct order of data that should be read out and written out to new file). So you will have one bigger diff file rather than a lots of smaller incremental. 
+When there is a lot of incr images (data traversal is taking a lot of time) you can consolidate "incr"s to "diff". Script will create a new file, pull data from all incr to itself (it knows the correct order of data that should be read out and written out to new file). So you will have one bigger diff file rather than a lots of smaller incremental. 
 
 My strategy is to create a few (4-6 incr per day) INCRs, between 6 AM-8 PM, and at 9 PM create DIFF. The next days starts as BASE -> Diff -> Incr. 
 On the next day, the old diff will be consolidated into a new diff (the intermediate incr will be also consolidated!). And then the weekend comes, so I can create a full backup as the I/O load is lower than during standard business hours.
