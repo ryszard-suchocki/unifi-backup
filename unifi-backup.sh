@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION="1.0.6"
+VERSION="1.0.6.1"
 APP_NAME="unifi-backup.sh"
 SCRIPT_URL='https://raw.githubusercontent.com/ryszard-suchocki/unifi-backup/main/unifi-backup.sh'
 SCRIPT_DESCRIPTION=""
