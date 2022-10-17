@@ -493,6 +493,7 @@ function print_backing_chain(){
     local domain_name=$1
     get_block_devices "$domain_name" block_devices
     for ((i=0; i<"${#block_devices[@]}";i++)); do
+        local snapshot_chain_flat
         local target_dev=$(virsh domblklist "$domain_name" --details | grep disk | grep ${block_devices[$i]} | awk '{print $3}')
         print_v d "Backing chain for block device: ${target_dev}"
         get_snapshot_chain "${block_devices[$i]}" snapshot_chain_flat
@@ -501,6 +502,7 @@ function print_backing_chain(){
             print_v d "$j)"
             echo "${snapshot_chain[$i,$j]}"
         done
+        unset local snapshot_chain_flat
     done
     return 0
 }
