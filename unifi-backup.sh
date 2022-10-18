@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION="1.0.6.1"
+VERSION="1.0.6.2"
 APP_NAME="unifi-backup.sh"
 SCRIPT_URL='https://raw.githubusercontent.com/ryszard-suchocki/unifi-backup/main/unifi-backup.sh'
 SCRIPT_DESCRIPTION=""
@@ -285,7 +285,7 @@ function get_backing_file() {
         print_v e "Error in getting backing file: Check if running with sufficient permissions (sudo, apparmor status, etc)"
         return $_ret
     else
-        _backing_file=$(echo "$_qemu_info" | awk '/^backing file:/ {$1=$2=""; print $0}' | grep -oE "(\/)+([\/._a-zA-Z0-9\-]*)")
+        _backing_file=$(echo "$_qemu_info" | awk '/^backing file:/ {$1=$2=""; print $0}' | grep -oE "((\/)+[\/._a-zA-Z0-9\-]*)")
     fi
     _return_var="$_backing_file"
     return 0
@@ -502,7 +502,7 @@ function print_backing_chain(){
             print_v d "$j)"
             echo "${snapshot_chain[$i,$j]}"
         done
-        unset local snapshot_chain_flat
+        unset snapshot_chain_flat
     done
     return 0
 }
